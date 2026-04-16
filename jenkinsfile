@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    environment {
+        EC2_USER = "Amazonlinux"
+        EC2_HOST = "13.53.40.0"
+        WEB_DIR  = "/var/www/html"
+    }
+
+    stages {
+
+        stage('Clone GitHub Repository') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/premchand-96/static-website.git'
+            }
+        }
+
+        stage('Deploy index.html to EC2 Amazonlinux') {
+            steps {
+                sshagent(['jenkins']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
+                        sudo rm -f $WEB_DIR/index.html
+                        sudo cp index.html $WEB_DIR/
+                        sudo chown www-data:www-data $WEB_DIR/index.html
+                        sudo systemctl restart apache2
+                    '
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Deployment successful!"
+            echo "🌍 Open: http://13.53.40.0"
+        }
+        failure {
+            echo "❌ Deployment failed"
+        }
+    }
+}

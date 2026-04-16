@@ -9,20 +9,23 @@ pipeline {
         }
 
         stage('Deploy to Server') {
-            steps {
-                sh '''
-                # 1. Clear out the old Apache directory completely
-                sudo rm -rf /var/www/html/*
-                
-                # 2. Copy everything from the current Jenkins workspace to Apache root
-                sudo cp -r ./* /var/www/html/
-                
-                # 3. Set the correct permissions so the web server can read the files
-                sudo chown -R ec2-user:ec2-user /var/www/html
-                sudo chmod -R 755 /var/www/html
-                '''
-            }
-        }
+    steps {
+        sh '''
+        # 1. Clear out the directory
+        sudo rm -rf /var/www/html/*
+        
+        # 2. Copy files (using full path to be safe)
+        sudo cp -r ${WORKSPACE}/. /var/www/html/
+        
+        # 3. Fix Permissions
+        sudo chown -R apache:apache /var/www/html
+        sudo chmod -R 755 /var/www/html
+        
+        # 4. Restart to be sure
+        sudo systemctl restart httpd
+        '''
+    }
+}
 
         stage('Restart Apache') {
             steps {

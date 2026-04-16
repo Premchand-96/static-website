@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        EC2_USER = "Amazonlinux"
+        EC2_USER = "ec2-user"
         EC2_HOST = "13.53.40.0"
         WEB_DIR  = "/var/www/html"
     }
@@ -16,29 +16,21 @@ pipeline {
             }
         }
 
-        stage('Deploy index.html to EC2 Amazonlinux') {
+        stage('Deploy to EC2') {
             steps {
                 sshagent(['jenkins']) {
                     sh """
+                    scp -o StrictHostKeyChecking=no index.html $EC2_USER@$EC2_HOST:/tmp/
+
                     ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
-                        sudo rm -f $WEB_DIR/index.html
-                        sudo cp index.html $WEB_DIR/
-                        sudo chown www-data:www-data $WEB_DIR/index.html
-                        sudo systemctl restart apache2
+                        sudo rm -rf $WEB_DIR/*
+                        sudo cp /tmp/index.html $WEB_DIR/
+                        sudo chown -R apache:apache $WEB_DIR
+                        sudo systemctl restart httpd
                     '
                     """
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo "✅ Deployment successful!"
-            echo "🌍 Open: http://13.53.40.0"
-        }
-        failure {
-            echo "❌ Deployment failed"
         }
     }
 }

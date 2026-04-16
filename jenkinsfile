@@ -6,6 +6,12 @@ pipeline {
     }
 
     stages {
+        stage('Clean Workspace') {
+            steps {
+                cleanWs() 
+            }
+        }
+
         stage('Checkout Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/Premchand-96/static-website.git'
@@ -15,27 +21,32 @@ pipeline {
         stage('Deploy to Server') {
             steps {
                 sh '''
-                # Remove default apache index if it exists
-                sudo rm -f $DEPLOY_DIR/index.html
-                # Copy all files from workspace to web root
-                sudo cp -r ./* $DEPLOY_DIR/
-                # Ensure permissions are correct for the web server
-                sudo chown -R ec2-user:apache $DEPLOY_DIR
-                sudo chmod -R 755 $DEPLOY_DIR
+                # 1. Force remove everything in the web directory to be clean
+                sudo rm -rf ${DEPLOY_DIR}/*
+                
+                # 2. Copy new files from Jenkins workspace to Apache root
+                sudo cp -r ./* ${DEPLOY_DIR}/
+                
+                # 3. Set permissions (Universal for Amazon Linux/CentOS)
+                sudo chmod -R 755 ${DEPLOY_DIR}
                 '''
             }
         }
 
         stage('Restart Web Server') {
             steps {
-                sh 'sudo systemctl restart httpd'
+                // Using 'reload' is faster and doesn't drop connections
+                sh 'sudo systemctl reload httpd || sudo systemctl restart httpd'
             }
         }
     }
 
     post {
         success {
-            echo "Deployment Successful! Visit http://13.53.40.0"
+            echo "✅ Deployment Successful! View here: http://13.53.40.0"
+        }
+        failure {
+            echo "❌ Deployment Failed. Check Jenkins Console Output."
         }
     }
 }

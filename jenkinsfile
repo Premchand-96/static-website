@@ -2,70 +2,40 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "coffee-shop"
-        DEPLOY_DIR = "/var/www/html/coffee-shop"
+        DEPLOY_DIR = "/var/www/html"
     }
 
     stages {
-
-        stage('Clean Workspace') {
-            steps {
-                cleanWs()
-            }
-        }
-
         stage('Checkout Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/Premchand-96/static-website.git'
             }
         }
 
-        stage('Verify Files') {
-            steps {
-                sh 'ls -la'
-            }
-        }
-
-        stage('Build (Optional)') {
-            steps {
-                sh '''
-                echo "No build needed for static project"
-                '''
-            }
-        }
-
         stage('Deploy to Server') {
             steps {
                 sh '''
-                sudo mkdir -p $DEPLOY_DIR
-                sudo cp -r * $DEPLOY_DIR
+                # Remove default apache index if it exists
+                sudo rm -f $DEPLOY_DIR/index.html
+                # Copy all files from workspace to web root
+                sudo cp -r ./* $DEPLOY_DIR/
+                # Ensure permissions are correct for the web server
+                sudo chown -R ec2-user:apache $DEPLOY_DIR
+                sudo chmod -R 755 $DEPLOY_DIR
                 '''
             }
         }
 
         stage('Restart Web Server') {
             steps {
-                sh '''
-                sudo systemctl restart httpd || sudo systemctl restart nginx
-                '''
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                sh '''
-                echo "Application deployed successfully"
-                '''
+                sh 'sudo systemctl restart httpd'
             }
         }
     }
 
     post {
         success {
-            echo "Deployment Successful ✅"
-        }
-        failure {
-            echo "Deployment Failed ❌"
+            echo "Deployment Successful! Visit http://13.53.40.0"
         }
     }
 }

@@ -1,17 +1,7 @@
 pipeline {
     agent any
 
-    environment {
-        DEPLOY_DIR = "/var/www/html"
-    }
-
     stages {
-        stage('Clean Workspace') {
-            steps {
-                cleanWs() 
-            }
-        }
-
         stage('Checkout Code') {
             steps {
                 git branch: 'main', url: 'https://github.com/Premchand-96/static-website.git'
@@ -21,32 +11,32 @@ pipeline {
         stage('Deploy to Server') {
             steps {
                 sh '''
-                # 1. Force remove everything in the web directory to be clean
-                sudo rm -rf ${DEPLOY_DIR}/*
+                # 1. Clear out the old Apache directory completely
+                sudo rm -rf /var/www/html/*
                 
-                # 2. Copy new files from Jenkins workspace to Apache root
-                sudo cp -r ./* ${DEPLOY_DIR}/
+                # 2. Copy everything from the current Jenkins workspace to Apache root
+                sudo cp -r ./* /var/www/html/
                 
-                # 3. Set permissions (Universal for Amazon Linux/CentOS)
-                sudo chmod -R 755 ${DEPLOY_DIR}
+                # 3. Set the correct permissions so the web server can read the files
+                sudo chown -R ec2-user:ec2-user /var/www/html
+                sudo chmod -R 755 /var/www/html
                 '''
             }
         }
 
-        stage('Restart Web Server') {
+        stage('Restart Apache') {
             steps {
-                // Using 'reload' is faster and doesn't drop connections
-                sh 'sudo systemctl reload httpd || sudo systemctl restart httpd'
+                sh 'sudo systemctl restart httpd'
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment Successful! View here: http://13.53.40.0"
+            echo "Successfully deployed! Check http://13.53.40.0"
         }
         failure {
-            echo "❌ Deployment Failed. Check Jenkins Console Output."
+            echo "Deployment failed. Check the Jenkins Console Output for errors."
         }
     }
 }

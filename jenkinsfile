@@ -11,17 +11,17 @@ pipeline {
         stage('Deploy to Server') {
     steps {
         sh '''
-        # 1. Clear out the directory
+        # -f ignores errors if the directory is already empty
         sudo rm -rf /var/www/html/*
         
-        # 2. Copy files (using full path to be safe)
-        sudo cp -r ${WORKSPACE}/. /var/www/html/
+        # Copy everything from workspace to the web root
+        sudo cp -r ./* /var/www/html/
         
-        # 3. Fix Permissions
+        # Set final permissions so Apache can serve the site
         sudo chown -R apache:apache /var/www/html
         sudo chmod -R 755 /var/www/html
         
-        # 4. Restart to be sure
+        # Restart Apache to refresh the site
         sudo systemctl restart httpd
         '''
     }

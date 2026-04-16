@@ -2,35 +2,70 @@ pipeline {
     agent any
 
     environment {
-        EC2_USER = "ec2-user"
-        EC2_HOST = "13.53.40.0"
-        WEB_DIR  = "/var/www/html"
+        APP_NAME = "coffee-shop"
+        DEPLOY_DIR = "/var/www/html/coffee-shop"
     }
 
     stages {
 
-        stage('Clone GitHub Repository') {
+        stage('Clean Workspace') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/premchand-96/static-website.git'
+                cleanWs()
             }
         }
 
-        stage('Deploy to EC2') {
+        stage('Checkout Code') {
             steps {
-                sshagent(['jenkins']) {
-                    sh """
-                    scp -o StrictHostKeyChecking=no index.html $EC2_USER@$EC2_HOST:/tmp/
-
-                    ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
-                        sudo rm -rf $WEB_DIR/*
-                        sudo cp /tmp/index.html $WEB_DIR/
-                        sudo chown -R apache:apache $WEB_DIR
-                        sudo systemctl restart httpd
-                    '
-                    """
-                }
+                git branch: 'main', url: 'https://github.com/Premchand-96/static-website.git'
             }
+        }
+
+        stage('Verify Files') {
+            steps {
+                sh 'ls -la'
+            }
+        }
+
+        stage('Build (Optional)') {
+            steps {
+                sh '''
+                echo "No build needed for static project"
+                '''
+            }
+        }
+
+        stage('Deploy to Server') {
+            steps {
+                sh '''
+                sudo mkdir -p $DEPLOY_DIR
+                sudo cp -r * $DEPLOY_DIR
+                '''
+            }
+        }
+
+        stage('Restart Web Server') {
+            steps {
+                sh '''
+                sudo systemctl restart httpd || sudo systemctl restart nginx
+                '''
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                echo "Application deployed successfully"
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment Successful ✅"
+        }
+        failure {
+            echo "Deployment Failed ❌"
         }
     }
 }

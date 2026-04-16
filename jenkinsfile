@@ -8,22 +8,21 @@ pipeline {
             }
         }
 
-        stage('Deploy to Server') {
+        stage('Deploy & Restart') {
             steps {
-                // This forces Jenkins to be in the workspace directory
                 dir("${WORKSPACE}") {
                     sh '''
-                    # 1. Force remove old files
+                    # 1. Clear out old files
                     sudo rm -rf /var/www/html/*
                     
-                    # 2. Copy everything from current folder to Apache
+                    # 2. Copy the new files from workspace to web root
                     sudo cp -r . /var/www/html/
                     
-                    # 3. Set ownership so Apache can serve it
+                    # 3. Set the correct permissions for Apache
                     sudo chown -R apache:apache /var/www/html
                     sudo chmod -R 755 /var/www/html
                     
-                    # 4. Restart Apache to reflect changes
+                    # 4. Restart the web server
                     sudo systemctl restart httpd
                     '''
                 }
@@ -33,7 +32,10 @@ pipeline {
 
     post {
         success {
-            echo "CI/CD Successful! View at http://13.53.40.0"
+            echo "CI/CD Successful! Check http://13.53.40.0"
+        }
+        failure {
+            echo "Deployment failed. Check Jenkins Console Output."
         }
     }
 }
